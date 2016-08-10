@@ -1,0 +1,12 @@
+#!/bin/bash
+#
+# Runs all executable hookname.* hooks and exits if any of them fails.
+# It is passing through STDIN and all arguments to work with all hook types.
+
+data=$(cat)
+hookname=$(basename $0)
+
+for hook in $GIT_DIR/hooks/$hookname.*; do
+	test -x "$hook" || continue
+	echo "$data" | "$hook" "$@" || { echo "$hook failed: $?" ; exit 1 ; }
+done

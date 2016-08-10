@@ -1,0 +1,17 @@
+hook-chain:
+	generic script to run multiple hooks per action
+
+pre-receive:
+	reject non-fast-forward pushes to and deletion of precious branches
+	reject commits without sign-offs and commits to stable w/o acks additionally
+	reject commits if their log message is not properly formatted
+
+update:
+	reject unannotated tags
+
+post-receive:
+	send notifications to the ml (via git_multimail)
+	mirror precious branches to github
+
+post-update:
+	prepare packed repo for dumb transports (http)

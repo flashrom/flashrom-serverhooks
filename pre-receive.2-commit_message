@@ -1,0 +1,61 @@
+#!/bin/bash
+#
+# Guarantees that
+#  - commit messages are properly formatted (no full stop in subject, empty line between subject and body)
+#  - all commits to any branch contains a signed-off-by line
+#  - commits to precious branches additionally are acked-by someone
+
+
+really_precious_branches=( stable )
+
+zero="0000000000000000000000000000000000000000"
+
+while read oldrev newrev refname; do
+	if [ "$newrev" = "$zero" ]; then
+		# deletes
+		continue
+	fi
+
+	if [ "$oldrev" != "$zero" ]; then
+		# not a create
+		pbranch=$(git rev-parse --symbolic --abbrev-ref $refname) || exit 13
+		for lbranch in "${really_precious_branches[@]}"; do
+			if [ "$lbranch" = "$pbranch" ]; then
+				commit=$(git rev-list -n 1 --all-match --invert-grep -E \
+					--grep '^Acked-by: .+ <.+@.+\..+>' "$oldrev..$newrev")
+				if [ -n "$commit" ]; then
+					echo "No Acked-by found in commit $commit for $refname (from $oldrev..$newrev), not pushing."
+					echo "git rev-list -n 1 --all-match --invert-grep -E --grep '^Acked-by: .+ <.+@.+\..+>' $oldrev..$newrev"
+					echo "Commit message was:"
+					git cat-file commit ${commit} | sed '1,/^$/d' | cat -n
+					exit 1
+				fi
+			fi
+			commit=$(git rev-list -n 1 --all-match --invert-grep -E \
+				--grep '^Signed-off-by: .+ <.+@.+\..+>' "$oldrev..$newrev")
+			if [ -n "$commit" ]; then
+				echo "No Signed-off-by found in commit $commit for $refname (from $oldrev..$newrev), not pushing."
+				echo "git rev-list -n 1 --all-match --invert-grep -E --grep '^Signed-off-by: .+ <.+@.+\..+>$' $oldrev..$newrev"
+				echo "Commit message was:"
+				git cat-file commit ${commit} | sed '1,/^$/d' | cat -n
+				exit 1
+			fi
+		done
+	fi
+
+	message=$(git cat-file commit ${newrev} | sed '1,/^$/d')
+	if [ ""$(echo "$message" | sed -nre '1!d;/.*[^[:alnum:]]$/p') != "" ]; then
+		echo "Non-alphanumeric character at the end of the first line of the commit message:"
+		echo "$message" | head -n1 | cat -n
+		exit 1
+	fi
+	
+	if [ ""$(echo "$message" | sed -nre '2!d;s/^$/empty/p') != "empty" ]; then
+		echo "Second line of commit message is not empty:"
+		echo "$message" | head -n2 | cat -n
+		exit 1
+	fi
+	
+done
+
+

@@ -1,0 +1,22 @@
+#!/bin/bash
+#
+# This hook pushes new commits in the mirror_branches to the mirror_url
+
+mirror_branches=( stable staging )
+mirror_url=git@github.com:flashrom/flashrom.git
+
+zero="0000000000000000000000000000000000000000"
+while read oldrev newrev refname; do
+
+	if [ "$newrev" = "$zero" ]; then
+		# if the branch is already gone we can't use git rev-parse
+		pbranch=${refname##refs/*/}
+	else
+		pbranch=$(git rev-parse --symbolic --abbrev-ref $refname) || exit 13
+	fi
+	for mbranch in "${mirror_branches[@]}"; do
+		if [ "$mbranch" = "$pbranch" ]; then
+			git push "$mirror_url" -f --tags "$mbranch"
+		fi
+	done
+done

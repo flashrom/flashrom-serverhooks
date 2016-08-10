@@ -1,0 +1,30 @@
+#!/bin/bash
+#
+# Protects precious branches from
+#  - deletion (needed because global config allows it for all branches)
+#  - non-forward pushes
+
+precious_branches=( stable staging )
+
+zero="0000000000000000000000000000000000000000"
+
+while read oldrev newrev refname; do
+	if [ "$oldrev" = "$zero" ]; then
+		# new reference
+		continue
+	fi
+
+	pbranch=$(git rev-parse --symbolic --abbrev-ref $refname) || exit 13
+	for lbranch in "${precious_branches[@]}"; do
+		if [ "$lbranch" = "$pbranch" ]; then
+			if [ "$newrev" = "$zero" ]; then
+				echo "Cannot delete precious branch $lbranch."
+				exit 14
+			fi
+			#if [ $(git rev-list --count $newrev..$oldrev) -gt 0 ]; then
+				#echo "Cannot push a non fast-forward reference to precious branch $lbranch."
+				#exit 42
+			#fi
+		fi
+	done
+done
