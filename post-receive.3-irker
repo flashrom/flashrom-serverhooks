@@ -1,0 +1,15 @@
+#!/bin/sh
+#
+# This hook announces any new commits to IRC
+
+export LC_CYTPE="en_US.utf8" LANGUAGE="en_US.utf8"
+
+project="flashrom"
+channels="irc://chat.freenode.net/flashrom"
+filtercmd="$GIT_DIR/hooks/irkerfilter.py"
+revformat="describe"
+
+while read old new refname; do
+	irkerhook --project="$project" --channels="$channels" --filtercmd="$filtercmd" --revformat="$revformat" --refname=${refname} $(git rev-list --reverse ${old}..${new})
+done
+exit 0
