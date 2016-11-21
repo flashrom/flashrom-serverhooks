@@ -8,8 +8,22 @@ project="flashrom"
 channels="irc://chat.freenode.net/flashrom"
 filtercmd="$GIT_DIR/hooks/irkerfilter.py"
 revformat="describe"
+max_commits=20
+zero=0000000000000000000000000000000000000000
 
 while read old new refname; do
+	if [ "${old}" = "$zero" ]; then
+		echo "Will not announce new branch on IRC."
+		continue
+	elif [ "${new}" = "$zero" ]; then
+		echo "Will not announce deleted branch on IRC."
+		continue
+	fi
+	num_commits=$(git rev-list --count "${old}..${new}" 2>/dev/null)
+	if [ "$num_commits" -gt 0 -a "$num_commits" -gt "$max_commits" ]; then
+		echo "Will not announce $num_commits (more than $max_commits; from ${old}..${new}) on IRC."
+		continue
+	fi
 	irkerhook --project="$project" --channels="$channels" --filtercmd="$filtercmd" --revformat="$revformat" --refname=${refname} $(git rev-list --reverse ${old}..${new})
 done
 exit 0
